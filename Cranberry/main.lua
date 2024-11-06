@@ -1,8 +1,8 @@
 local player = {inCredits = true, inMenu = false, inGame = false, x = 0, y = 0, speed = 3, hidden = true, level = nil}
 local window = {x = 0, y = 0, fullscreen = false}
 local scale = math.min(scaleX, scaleY)
-local clock = {timer = 0, seconds = 0, minutes = 0, hours = 0, days = 0, weeks = 0, fortnites = 0, months = 0, years = 0}
-local title = ""
+local clock = {timer = 0, seconds = 0, minutes = 0, hours = 0, days = 0, weeks = 0, months = 0, years = 0}
+local title = "You were not supposed to know about the Cranberries"
 local creditsData = {speed = 1, y = 0, }
 
 -- Load the game
@@ -70,7 +70,6 @@ function love.update(dt)
         love.timer.sleep(1 / 60)
     end
     
-    -- Menu Management, Not sure how important this is... ... It may be removed soon
     if player.inMenu and love.keyboard.isDown("return") then
         game()
     end
@@ -93,7 +92,7 @@ function love.update(dt)
     end
 
     -- Debugging
-    
+
     if love.keyboard.isDown("f1") then
         if debug then
             debug = false
@@ -102,9 +101,10 @@ function love.update(dt)
         end
     end
 
-    clock.timer = clock.timer + 1
-    clock.ticks = clock.ticks + 1
+    clock.timer = clock.timer + 1 -- Other Timer
+    clock.ticks = clock.ticks + 1 -- Game Timer
 
+    -- Timer Logic
     if clock.timer == 60 then
         clock.timer = 0
         clock.seconds = clock.seconds + 1
@@ -120,11 +120,28 @@ function love.update(dt)
                     if clock.days == 7 then
                         clock.days = 0
                         clock.weeks = clock.weeks + 1
+                        if clock.weeks == 3 then
+                            clock.weeks = 0
+                            clock.months = clock.months + 1
+                            if clock.months == 12 then
+                                clock.months = 0
+                                clock.years = clock.years + 1
+                                local years = ""
+                                if clock.years == 1 then
+                                    years = "Year"
+                                else
+                                    years = "Years"
+                                end
+                                print("The user is taking a long time, they have took " .. clock.years .. " " .. years .. " to get to this point!")
+                            end
+                        end
                     end
                 end
             end
         end
     end
+
+    -- For the Credits
 
     if player.inCredits then
         creditsData.y = creditsData.y + creditsData.speed
@@ -132,6 +149,8 @@ function love.update(dt)
 end
 
 function love.draw()
+
+    -- Selector For Game State, Menu, Credits, Game
     if player.inCredits then
         credits()
     elseif player.inMenu then
@@ -164,19 +183,13 @@ function mainMenu()
         )
         love.graphics.setColor(0, 0, 0)
     end
-
-    love.graphics.print(
-        "You were not supposed to know about the Cranberries",
-        (window.x - love.graphics.getFont():getWidth("You were not supposed to know about the Cranberries")) / 2,
-        50
-    )
-    local title = "You were not supposed to know about the Cranberries"
     local titleWidth = love.graphics.getFont():getWidth(title)
+    love.graphics.print(title, titleWidth / 2, 50)
     local offset = titleWidth * .1
     love.graphics.print("by QuickMash Games", (window.x - titleWidth) / 2 + offset, 70)
     local text = "Press ENTER to Start"
-    local textWidth = love.graphics.getFont():getWidth(text)
-    local x = (window.x - textWidth) / 2
+    local x = (window.x - love.graphics.getFont():getWidth(text)) / 2
+    love.graphics.print("Press ENTER to Start", x, 400)``
 
     if x < 0 then
         x = 0
