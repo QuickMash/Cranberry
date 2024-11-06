@@ -1,84 +1,99 @@
 local player = {inCredits = true, inMenu = false, inGame = false, x = 0, y = 0, speed = 3, hidden = true, level = nil}
-local window = {x = 0, y = 0}
-local cheats = {x = 10, y = 10, dragy = 100, active = false, index = 1}
-local cheat = {"up", "up", "down", "down", "left", "right", "left", "right", "b", "a"}
-local clock = {
-    timer = 0,
-    seconds = 0,
-    minutes = 0,
-    hours = 0,
-    days = 0,
-    weeks = 0,
-    fortnites = 0,
-    months = 0,
-    years = 0
-}
+local window = {x = 0, y = 0, fullscreen = false}
+local scale = math.min(scaleX, scaleY)
+local clock = {timer = 0, seconds = 0, minutes = 0, hours = 0, days = 0, weeks = 0, fortnites = 0, months = 0, years = 0}
+local title = ""
+local creditsData = {speed = 1, y = 0, }
 
-local creditsData = {speed = 1, y = 0}
-debug = false
-showplaytime = true
-tia = "Not Tested."
-tiae = true
+-- Load the game
+
 function love.load()
-    love.window.setTitle("You were not supposed to know about the cranberrys")
 
-    buttons = require("assets/lib/simplebutton")
-    map = require("assets/lib/sti")
+    -- Window
 
-    buttons.default.width = 100
-    buttons.default.height = 40
-    buttons.default.alignment = "center"
-
-    start = buttons.new("Start", 100, 100, 200, 50)
-    local creditsbtn = buttons.new("Credits", 100, 200, 200, 50)
-    local quitbtn = buttons.new("Quit", 100, 300, 200, 50)
-
-    start.onClick = function()
-        player.inMenu = false
-        player.inGame = true
+    if not fullscreen then
+        window.fullscreen = love.window.setFullscreen(true)
+    else
+        print("Could Not Fullscreen")
     end
 
-    creditsbtn.onClick = function()
-        player.inMenu = false
-        player.inCredits = true
-    end
+    love.window.setTitle(title)
+    window.x = love.graphics.getWidth()
+    window.y = love.graphics.getHeight()
 
-    quitbtn.onClick = function()
-        love.event.quit()
-    end
+    -- Librarys
+
+    local sti = require("assets/lib/sti")
+
+    -- Window
 
     window.x = love.graphics.getWidth()
     window.y = love.graphics.getHeight()
-    timer = 0
-end
 
-function love.update(dt)
-    buttons.update(dt)
+    -- Font
 
-    if love.timer.getFPS() == 60 then
-        if not tiae then
-            tia = "Yes"
-        end
-    else
-        tia = "No"
-        tiae = false
+    local fontSize = math.min(window.x, window.y) * 0.05
+    local font = love.graphics.newFont("assets/fonts/silkscreen.ttf", fontSize)
+    love.graphics.setFont(font)
+
+    function spriteLayer:draw()
+        love.graphics.rectangle("fill", player.x, player.y, 10, 10)
     end
 
+    -- Player
+
+    love.graphics.newImage("assets/sprites/player.png")
+
+
+    -- Game Map
+
+    local level1 = sti("assets/map/level1.lua", {"box2d"})
+    love.physics.setMeter(32)
+    world = love.physics.newWorld(0, 0)
+    level1:box2d_init(world)
+    spriteLayer = level1:addCustomLayer("Sprite Layer", 3)
+    local mapWidth = level1.width * level1.tilewidth
+    local mapHeight = level1.height * level1.tileheight
+    local scaleX = window.x / mapWidth
+    local scaleY = window.y / mapHeight
+    spriteLayer.sprites = {
+        love.graphics.draw(player.sprite, player.x, player.y)
+    }
+end
+
+-- Game Updates, like timer - Based on FPS
+
+function love.update(dt)
+
+    -- Frame Skipping
+    if love.timer.getFPS() > 60 then
+        love.timer.sleep(1 / 60)
+    end
+    
+    -- Menu Management, Not sure how important this is... ... It may be removed soon
+    if player.inMenu and love.keyboard.isDown("return") then
+        game()
+    end
+
+    -- Movement for player
+
     if player.inMenu then
-        if love.keyboard.isDown("w") then
+        if love.keyboard.isDown("s") then
             player.y = player.y + player.speed
         end
-        if love.keyboard.isDown("a") then
+        if love.keyboard.isDown("d") then
             player.x = player.x + player.speed
         end
-        if love.keyboard.isDown("s") then
+        if love.keyboard.isDown("w") then
             player.y = player.y - player.speed
         end
-        if love.keyboard.isDown("d") then
+        if love.keyboard.isDown("a") then
             player.x = player.x - player.speed
         end
     end
 
+    -- Debugging
+    
     if love.keyboard.isDown("f1") then
         if debug then
             debug = false
@@ -88,6 +103,7 @@ function love.update(dt)
     end
 
     clock.timer = clock.timer + 1
+    clock.ticks = clock.ticks + 1
 
     if clock.timer == 60 then
         clock.timer = 0
@@ -110,19 +126,6 @@ function love.update(dt)
         end
     end
 
-    local key = love.keyboard.isDown("l")
-
-    if key then
-        cheat_index = cheat_index + 1
-
-        if cheat_index > #cheat then
-            print("hi")
-            cheats(true)
-        end
-    else
-        cheat_index = 1
-    end
-
     if player.inCredits then
         creditsData.y = creditsData.y + creditsData.speed
     end
@@ -136,15 +139,11 @@ function love.draw()
     elseif player.inGame then
         game()
     end
-
-    if not player.hidden then
-        love.graphics.rectangle("fill", player.x, player.y, 10, 10)
-    end
 end
 
 function mainMenu()
-    love.graphics.setBackgroundColor(.5, .5, 0)
     player.inMenu = true
+    love.graphics.setBackgroundColor(.5, .5, 0)
     love.graphics.setColor(0, 0, 0)
 
     if debug then
@@ -175,47 +174,49 @@ function mainMenu()
     local titleWidth = love.graphics.getFont():getWidth(title)
     local offset = titleWidth * .1
     love.graphics.print("by QuickMash Games", (window.x - titleWidth) / 2 + offset, 70)
+    local text = "Press ENTER to Start"
+    local textWidth = love.graphics.getFont():getWidth(text)
+    local x = (window.x - textWidth) / 2
+
+    if x < 0 then
+        x = 0
+    elseif x + textWidth > window.x then
+        x = window.x - textWidth
+    end
 
     love.graphics.setColor(1, 0, 0)
-    love.graphics.print("Press ENTER to Start", (window.x - love.graphics.getFont():getWidth("Press ENTER to Start")) / 2, 400, textRotate)
+    love.graphics.setColor(0, 0, 0)
+    love.graphics.setColor(1, 0, 0)
+    local bobAmount = 5
+    local bobSpeed = 2
+    local textRotate = math.sin(love.timer.getTime() * bobSpeed) * 0.1
+    local bobOffset = math.sin(love.timer.getTime() * bobSpeed) * bobAmount
+    love.graphics.print(
+        "Press ENTER to Start",
+        (window.x - love.graphics.getFont():getWidth("Press ENTER to Start")) / 2 + bobOffset,
+        400,
+        textRotate
+    )
     love.graphics.setColor(0, 0, 0)
 end
 
-function cheats(active)
-    if active then
-        cheats.active = true
-        debug = true
-    elseif active == nil then
-        cheats.active = false
-    else
-        cheats.active = false
-        print(
-            "01010100 01101000 01100101 00100000 01000110 01101111 01110010 01100011 01100101 00100000 01101001 01110011 00100000 01110111 01101001 01110100 01101000 00100000 01111001 01101111 01110101 00101100 00100000 01111001 01101111 01110101 01101110 01100111 00100000 01010011 01101011 01111001 01110111 01100001 01101100 01101011 01100101 01110010 00101110 00100000 01000010 01110101 01110100 00100000 01111001 01101111 01110101 00100000 01100001 01110010 01100101 00100000 01101110 01101111 01110100 00100000 01100001 00100000 01001010 01100101 01100100 01101001 00100000 01111001 01100101 01110100 00101110"
-        )
-    end
-
-    if cheats.active then
-        player.hidden = not player.hidden
-        cheats.active = false
-    end
-end
-
 function credits()
+    player.inCredits = true
     if player.inCredits then
         local creditsText = {
             "Game by QuickMash Games",
             "Game Design by Quackers",
             "Music by Nokkvi",
             "Programming by QuickMash",
-            "Art by ",
-            "Special Thanks to ",
+            "Art by Example",
+            "Special Thanks to Example",
             "Enjoy The Game!"
         }
 
         for i, text in ipairs(creditsText) do
             local textWidth = love.graphics.getFont():getWidth(text)
             local x = (window.x - textWidth) / 2
-            love.graphics.print(text, x, creditsData.y + (i - 1) * 20, 0, 1)
+            love.graphics.print(text, x, creditsData.y + (i - 1) * spacing, 0, 1)
         end
 
         if creditsData.y < window.y then
@@ -229,15 +230,29 @@ function credits()
         end
 
         if love.keyboard.isDown("space") then
-            speed = 10
+            creditsData.speed = 10
         else
-            speed = 1
+            creditsData.speed = 1
         end
     end
 end
 
 function game()
-    player.inGame = true
-    player.hidden = false
-    -- level1:draw()
+    love.graphics.setColor(1, 1, 1)
+    level1:draw()
+    level1:resize(mapWidth * scale, mapHeight * scale)
+    if debug then
+        love.graphics.print(
+            "X:" ..
+                player.x ..
+                    " | Y:" ..
+                        player.y ..
+                            "\nPlayer Speed:" ..
+                                player.speed .. "\nTimer:" .. clock.timer .. "\nFPS:" .. love.timer.getFPS(),
+            10,
+            10
+        )
+        love.graphics.setColor(1, 0, 1)
+        level1:box2d_draw()
+    end
 end
