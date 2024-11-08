@@ -1,271 +1,136 @@
-local player = {inCredits = true, inMenu = false, inGame = false, x = 0, y = 0, speed = 3, hidden = true, level = nil}
-local window = {x = 0, y = 0, fullscreen = false}
-local scale = math.min(scaleX, scaleY)
-local clock = {timer = 0, seconds = 0, minutes = 0, hours = 0, days = 0, weeks = 0, months = 0, years = 0}
-local title = "You were not supposed to know about the Cranberries"
-local creditsData = {speed = 1, y = 0, }
-
--- Load the game
+-- Author: QuickMash
+-- Version: 1.0
+-- Title: You Were Not Supposed to Know About the Cranberrys
+-- Licence: Coming soon!
+local player = {x=0, y=0, speed=1, sprite=false, inMenu=false, inGame=false, inCredits=true}
+local window = {x=0, y=0, fullscreen=false, ColorAlpha=1}
+local save = {path="save.txt", first=true}
+local clock = {ticks=0, seconds=0, till = 0}
+local game = {whiteDone=false}
+local debug = false
+local deviceInfo = love.system.getOS()
 
 function love.load()
-
-    -- Window
-
-    if not fullscreen then
-        window.fullscreen = love.window.setFullscreen(true)
-    else
-        print("Could Not Fullscreen")
-    end
-
-    love.window.setTitle(title)
-    window.x = love.graphics.getWidth()
-    window.y = love.graphics.getHeight()
-
-    -- Librarys
-
-    local sti = require("assets/lib/sti")
-
-    -- Window
-
-    window.x = love.graphics.getWidth()
-    window.y = love.graphics.getHeight()
-
-    -- Font
-
-    local fontSize = math.min(window.x, window.y) * 0.05
-    local font = love.graphics.newFont("assets/fonts/silkscreen.ttf", fontSize)
-    love.graphics.setFont(font)
-
-    function spriteLayer:draw()
-        love.graphics.rectangle("fill", player.x, player.y, 10, 10)
-    end
-
-    -- Player
-
-    love.graphics.newImage("assets/sprites/player.png")
-
-
-    -- Game Map
-
-    local level1 = sti("assets/map/level1.lua", {"box2d"})
-    love.physics.setMeter(32)
-    world = love.physics.newWorld(0, 0)
-    level1:box2d_init(world)
-    spriteLayer = level1:addCustomLayer("Sprite Layer", 3)
-    local mapWidth = level1.width * level1.tilewidth
-    local mapHeight = level1.height * level1.tileheight
-    local scaleX = window.x / mapWidth
-    local scaleY = window.y / mapHeight
-    spriteLayer.sprites = {
-        love.graphics.draw(player.sprite, player.x, player.y)
-    }
+    local mainMenu = love.audio.newSource("assets/music/1.ogg", "stream")
+    mainMenu:setLooping(true)
+    local openingSound = love.audio.newSource("assets/sounds/opening.ogg", "stream")
 end
 
--- Game Updates, like timer - Based on FPS
-
 function love.update(dt)
-
-    -- Frame Skipping
-    if love.timer.getFPS() > 60 then
-        love.timer.sleep(1 / 60)
+    if love.timer.getFPS() < 60 then
+        love.timer.sleep(1/60 - love.timer.getDelta())
     end
-    
-    if player.inMenu and love.keyboard.isDown("return") then
-        game()
-    end
-
-    -- Movement for player
-
-    if player.inMenu then
-        if love.keyboard.isDown("s") then
-            player.y = player.y + player.speed
-        end
-        if love.keyboard.isDown("d") then
-            player.x = player.x + player.speed
-        end
-        if love.keyboard.isDown("w") then
-            player.y = player.y - player.speed
-        end
-        if love.keyboard.isDown("a") then
-            player.x = player.x - player.speed
-        end
-    end
-
-    -- Debugging
-
-    if love.keyboard.isDown("f1") then
-        if debug then
-            debug = false
-        else
-            debug = true
-        end
-    end
-
-    clock.timer = clock.timer + 1 -- Other Timer
-    clock.ticks = clock.ticks + 1 -- Game Timer
-
-    -- Timer Logic
-    if clock.timer == 60 then
-        clock.timer = 0
+    -- Ticks
+    clock.ticks = clock.ticks + 1
+    if clock.ticks == 60 then
         clock.seconds = clock.seconds + 1
-        if clock.seconds == 60 then
-            clock.seconds = 0
-            clock.minutes = clock.minutes + 1
-            if clock.minutes == 60 then
-                clock.minutes = 0
-                clock.hours = clock.hours + 1
-                if clock.hours == 24 then
-                    clock.hours = 0
-                    clock.days = clock.days + 1
-                    if clock.days == 7 then
-                        clock.days = 0
-                        clock.weeks = clock.weeks + 1
-                        if clock.weeks == 3 then
-                            clock.weeks = 0
-                            clock.months = clock.months + 1
-                            if clock.months == 12 then
-                                clock.months = 0
-                                clock.years = clock.years + 1
-                                local years = ""
-                                if clock.years == 1 then
-                                    years = "Year"
-                                else
-                                    years = "Years"
-                                end
-                                print("The user is taking a long time, they have took " .. clock.years .. " " .. years .. " to get to this point!")
-                            end
-                        end
-                    end
-                end
-            end
-        end
+    end
+    -- Movement
+    if love.keyboard.isDown("right") then
+        player.x = player.x + player.speed
+    end
+    if love.keyboard.isDown("left") then
+        player.x = player.x - player.speed
+    end
+    if love.keyboard.isDown("down") then
+        player.y = player.y + player.speed
+    end
+    if love.keyboard.isDown("up") then
+        player.y = player.y - player.speed
     end
 
-    -- For the Credits
-
-    if player.inCredits then
-        creditsData.y = creditsData.y + creditsData.speed
+    if (love.keyboard.isDown("right") or love.keyboard.isDown("left")) and 
+       (love.keyboard.isDown("down") or love.keyboard.isDown("up")) then
+        player.speed = 0.7071 -- 1/sqrt(2)
+    else
+        player.speed = 1
     end
 end
 
 function love.draw()
+    if player.inMenu then
+        mainMenu()
+    end
 
-    -- Selector For Game State, Menu, Credits, Game
+    if player.inGame then
+        game()
+        if not window.ColorAlpha == 1 then
+            window.ColorAlpha = window.ColorAlpha - 0.01
+            game.whiteDone = true
+        end
+    end
+
     if player.inCredits then
         credits()
-    elseif player.inMenu then
-        mainMenu()
-    elseif player.inGame then
-        game()
+    end
+end
+
+function credits()
+    local creditCard = 0
+    local credits = ""
+    love.graphics.print(credits, (love.graphics.getWidth() - love.graphics.getFont():getWidth(credits)) / 2, (love.graphics.getHeight() - love.graphics.getFont():getHeight()) / 2)
+    if creditCard == 0 then
+        credits = "Game by QuickMash Games"
+        clock.till = 10 + clock.seconds()
+        if clock.seconds() >= clock.till then
+            creditCard = 1
+        end
+    elseif creditCard == 1 then
+        credits = "Art by "
+        clock.till = 10 + clock.seconds()
+        if clock.seconds() >= clock.till then
+            creditCard = 2
+        end
+    elseif creditCard == 2 then
+        credits = "Music by Nokkvi"
+        clock.till = 10 + clock.seconds()
+        if clock.seconds() >= clock.till then
+            creditCard = 3
+        end
+    elseif creditCard == 3 then
+        credits = "Sound by Nokkvi"
+        clock.till = 10 + clock.seconds()
+        if clock.seconds() >= clock.till then
+            creditCard = 4
+        end
+    elseif creditCard == 4 then
+        credits = "Programming by QuickMash"
+        clock.till = 10 + clock.seconds()
+        if clock.seconds() >= clock.till then
+            creditCard = 5
+        end
+    elseif creditCard == 5 then
+        credits = "Design by Quackers"
+        clock.till = 10 + clock.seconds()
+        if clock.seconds() >= clock.till then
+            creditCard = 6
+        end
+    elseif creditCard == 6 then
+        credits = "Enjoy the Game!"
+        clock.till = 12 + clock.seconds()
+        if clock.seconds() >= clock.till then
+            player.inMenu = true
+        end
     end
 end
 
 function mainMenu()
-    player.inMenu = true
-    love.graphics.setBackgroundColor(.5, .5, 0)
-    love.graphics.setColor(0, 0, 0)
-
-    if debug then
-        love.graphics.setColor(0, 0, 1)
-        love.graphics.print(
-            clock.weeks ..
-                ":" ..
-                    clock.days ..
-                        ":" ..
-                            clock.hours ..
-                                ":" ..
-                                    clock.minutes ..
-                                        ":" ..
-                                            clock.seconds ..
-                                                "\nFPS:" .. love.timer.getFPS() .. "\nTimer is Correct: " .. tia,
-            10,
-            10
-        )
-        love.graphics.setColor(0, 0, 0)
-    end
-    local titleWidth = love.graphics.getFont():getWidth(title)
-    love.graphics.print(title, titleWidth / 2, 50)
-    local offset = titleWidth * .1
-    love.graphics.print("by QuickMash Games", (window.x - titleWidth) / 2 + offset, 70)
-    local text = "Press ENTER to Start"
-    local x = (window.x - love.graphics.getFont():getWidth(text)) / 2
-    love.graphics.print("Press ENTER to Start", x, 400)``
-
-    if x < 0 then
-        x = 0
-    elseif x + textWidth > window.x then
-        x = window.x - textWidth
-    end
-
-    love.graphics.setColor(1, 0, 0)
-    love.graphics.setColor(0, 0, 0)
-    love.graphics.setColor(1, 0, 0)
-    local bobAmount = 5
-    local bobSpeed = 2
-    local textRotate = math.sin(love.timer.getTime() * bobSpeed) * 0.1
-    local bobOffset = math.sin(love.timer.getTime() * bobSpeed) * bobAmount
-    love.graphics.print(
-        "Press ENTER to Start",
-        (window.x - love.graphics.getFont():getWidth("Press ENTER to Start")) / 2 + bobOffset,
-        400,
-        textRotate
-    )
-    love.graphics.setColor(0, 0, 0)
-end
-
-function credits()
-    player.inCredits = true
-    if player.inCredits then
-        local creditsText = {
-            "Game by QuickMash Games",
-            "Game Design by Quackers",
-            "Music by Nokkvi",
-            "Programming by QuickMash",
-            "Art by Example",
-            "Special Thanks to Example",
-            "Enjoy The Game!"
-        }
-
-        for i, text in ipairs(creditsText) do
-            local textWidth = love.graphics.getFont():getWidth(text)
-            local x = (window.x - textWidth) / 2
-            love.graphics.print(text, x, creditsData.y + (i - 1) * spacing, 0, 1)
-        end
-
-        if creditsData.y < window.y then
-        else
-            mainMenu()
-            player.inCredits = false
-            player.inMenu = true
-        end
-        if debug then
-            love.graphics.print("Credits y:" .. creditsData.y .. "\nspeed: " .. creditsData.speed, 10, 10)
-        end
-
-        if love.keyboard.isDown("space") then
-            creditsData.speed = 10
-        else
-            creditsData.speed = 1
-        end
-    end
+    love.window.setTitle("YWNSATC V1.0 - Main Menu")
+    love.graphics.setBackgroundColor(0,1,0,.5)
+    love.graphics.print("You were not supposed to know about the cranberrys", 10, 10)
+    love.graphics.print("By QuickMash Games", window.x - 10, window.y - 10)
+    love.graphics.setColor(1,0,.5, 1)
+    love.graphics.print("Press Enter to Start", window.x - 10, window.y + 10)
 end
 
 function game()
-    love.graphics.setColor(1, 1, 1)
-    level1:draw()
-    level1:resize(mapWidth * scale, mapHeight * scale)
-    if debug then
-        love.graphics.print(
-            "X:" ..
-                player.x ..
-                    " | Y:" ..
-                        player.y ..
-                            "\nPlayer Speed:" ..
-                                player.speed .. "\nTimer:" .. clock.timer .. "\nFPS:" .. love.timer.getFPS(),
-            10,
-            10
-        )
-        love.graphics.setColor(1, 0, 1)
-        level1:box2d_draw()
+    love.graphics.setColor(1, 1, 1, window.ColorAlpha)
+    love.graphics.rectangle(fill, window.x, window.y)
+    openingSound:play()
+    if game.whiteDone then
+        openingSound:stop() -- just to be safe...
+        -- level1:draw()
+        love.graphics.setcolor(0, 0, 0, 1)
+        love.graphics.print("EEE",10,10)
     end
 end
