@@ -2,36 +2,51 @@
 -- Version: 1.0
 -- Title: You Were Not Supposed to Know About the Cranberrys
 -- Licence: Coming soon!
-local player = {x=0, y=0, speed=1, sprite=false, inMenu=false, inGame=false, inCredits=true}
-local window = {x=0, y=0, fullscreen=false, ColorAlpha=1}
-local save = {path="save.txt", first=true}
-local clock = {ticks=0, seconds=0, till = 0}
-local game = {whiteDone=false}
-local debug = false
-local deviceInfo = love.system.getOS()
+love = love or {}
+local player = {x = 0, y = 0, speed = 1, sprite = false, inMenu = false, inGame = false, inCredits = true}
+player.inCredits = true
+local window = {x = 0, y = 0, fullscreen = false, ColorAlpha = 1}
+local clock = {ticks = 0, seconds = 0, till = 0}
+local game = {whiteDone = false}
+local debug = true
+local debugstat = {status = "Unknown"}
+local font = love.graphics.getFont()
 
 function love.load()
-    local mainMenu = love.audio.newSource("assets/music/1.ogg", "stream")
-    mainMenu:setLooping(true)
-    local openingSound = love.audio.newSource("assets/sounds/opening.ogg", "stream")
+    font = love.graphics.setFont()
+    menuMusic = love.audio.newSource("/assets/audio/menu.mp3", "stream")
+    clock.ticks = 0
 end
 
 function love.update(dt)
     if love.timer.getFPS() < 60 then
-        love.timer.sleep(1/60 - love.timer.getDelta())
+        love.timer.sleep(1 / 60 - love.timer.getDelta())
     end
-    -- Ticks
+    -- Debug Status
+    if love.keyboard.isDown("f1") then
+        if debug then
+            debug = false
+        elseif not debug then
+            debug = true
+        end
+    end
+    if debug then
+        debugstat.status = "Enabled"
+    elseif not debug then
+        debugstat.status = "Disabled"
+    else
+        debugstat.status = "Unknown"
+    end
+    
     clock.ticks = clock.ticks + 1
-    if clock.ticks == 60 then
-        clock.seconds = clock.seconds + 1
-    end
-    -- Movement
+
     if love.keyboard.isDown("right") then
         player.x = player.x + player.speed
     end
     if love.keyboard.isDown("left") then
         player.x = player.x - player.speed
     end
+    
     if love.keyboard.isDown("down") then
         player.y = player.y + player.speed
     end
@@ -39,8 +54,10 @@ function love.update(dt)
         player.y = player.y - player.speed
     end
 
-    if (love.keyboard.isDown("right") or love.keyboard.isDown("left")) and 
-       (love.keyboard.isDown("down") or love.keyboard.isDown("up")) then
+    if
+        (love.keyboard.isDown("right") or love.keyboard.isDown("left")) and
+            (love.keyboard.isDown("down") or love.keyboard.isDown("up"))
+     then
         player.speed = 0.7071 -- 1/sqrt(2)
     else
         player.speed = 1
@@ -53,7 +70,7 @@ function love.draw()
     end
 
     if player.inGame then
-        game()
+        drawGame()
         if not window.ColorAlpha == 1 then
             window.ColorAlpha = window.ColorAlpha - 0.01
             game.whiteDone = true
@@ -66,71 +83,69 @@ function love.draw()
 end
 
 function credits()
-    local creditCard = 0
-    local credits = ""
-    love.graphics.print(credits, (love.graphics.getWidth() - love.graphics.getFont():getWidth(credits)) / 2, (love.graphics.getHeight() - love.graphics.getFont():getHeight()) / 2)
-    if creditCard == 0 then
-        credits = "Game by QuickMash Games"
-        clock.till = 10 + clock.seconds()
-        if clock.seconds() >= clock.till then
-            creditCard = 1
-        end
-    elseif creditCard == 1 then
-        credits = "Art by "
-        clock.till = 10 + clock.seconds()
-        if clock.seconds() >= clock.till then
-            creditCard = 2
-        end
-    elseif creditCard == 2 then
-        credits = "Music by Nokkvi"
-        clock.till = 10 + clock.seconds()
-        if clock.seconds() >= clock.till then
-            creditCard = 3
-        end
-    elseif creditCard == 3 then
-        credits = "Sound by Nokkvi"
-        clock.till = 10 + clock.seconds()
-        if clock.seconds() >= clock.till then
-            creditCard = 4
-        end
-    elseif creditCard == 4 then
-        credits = "Programming by QuickMash"
-        clock.till = 10 + clock.seconds()
-        if clock.seconds() >= clock.till then
-            creditCard = 5
-        end
-    elseif creditCard == 5 then
-        credits = "Design by Quackers"
-        clock.till = 10 + clock.seconds()
-        if clock.seconds() >= clock.till then
-            creditCard = 6
-        end
-    elseif creditCard == 6 then
-        credits = "Enjoy the Game!"
-        clock.till = 12 + clock.seconds()
-        if clock.seconds() >= clock.till then
-            player.inMenu = true
-        end
+    love.audio.play(menuMusic)
+    love.audio.setVolume(1.0)
+    local credit = ""
+    if debug then
+        love.graphics.print(
+        "Debug Status: " .. debugstat.status .. "\nGame Ticks: " .. clock.ticks,
+            10,
+            10
+        )
     end
+
+    if clock.ticks >= 700 then
+        player.inMenu = true
+        player.inCredits = false
+    elseif clock.ticks >= 550 then
+        credit = "Enjoy the game!"
+    elseif clock.ticks >= 400 then
+        credit = "Programming by QuickMash"
+    elseif clock.ticks >= 350 then
+        credit = "Sound Effects by Nokkvi"
+    elseif clock.ticks >= 250 then
+        credit = "Music by Nokkvi"
+    elseif clock.ticks >= 150 then
+        credit = "Game/Map Design by Quackers"
+    else
+        credit = "Game by QuickMash Games"
+    end
+    if love.keyboard.isDown("return") then
+        player.inCredits = false
+        player.inMenu = true
+    end
+    local textWidth = font:getWidth(credit)
+    local textHeight = font:getHeight(credit)
+    local screenWidth = love.graphics.getWidth()
+    local screenHeight = love.graphics.getHeight()
+    love.graphics.print(credit, (screenWidth - textWidth) / 2, (screenHeight - textHeight) / 2)
+end
+
+function rainCranberries()
+    -- Make the background(behind the press enter to start)
 end
 
 function mainMenu()
+    rainCranberries()
+    local screenWidth = love.graphics.getWidth()
+    local screenHeight = love.graphics.getHeight()
+    local title1Width = font:getWidth("You were not supposed to know about the Cranberries")
+    local title1Height = font:getHeight("You were not supposed to know about the Cranberries")
     love.window.setTitle("YWNSATC V1.0 - Main Menu")
-    love.graphics.setBackgroundColor(0,1,0,.5)
-    love.graphics.print("You were not supposed to know about the cranberrys", 10, 10)
-    love.graphics.print("By QuickMash Games", window.x - 10, window.y - 10)
-    love.graphics.setColor(1,0,.5, 1)
+    love.graphics.setBackgroundColor(0,0,0)
+    love.graphics.print("You were not supposed to know about the Cranberries", (screenWidth - title1Width) / 2, (screenHeight - title1Height) - (screenHeight - 100))
+    love.graphics.setColor(1, 0, .5, 1)
     love.graphics.print("Press Enter to Start", window.x - 10, window.y + 10)
 end
 
-function game()
+function drawGame()
     love.graphics.setColor(1, 1, 1, window.ColorAlpha)
-    love.graphics.rectangle(fill, window.x, window.y)
+    love.graphics.rectangle("fill", window.x, window.y, love.graphics.getWidth(), love.graphics.getHeight())
     openingSound:play()
     if game.whiteDone then
-        openingSound:stop() -- just to be safe...
+        -- Tell Sound to stop
         -- level1:draw()
-        love.graphics.setcolor(0, 0, 0, 1)
-        love.graphics.print("EEE",10,10)
+        love.graphics.setColor(0, 0, 0, 1)
+        love.graphics.print("EEE", 10, 10)
     end
 end
